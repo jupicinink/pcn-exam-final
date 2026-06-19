@@ -32,13 +32,75 @@ public class DBManager {
         return DriverManager.getConnection(url, username, password);
     }
 
-    public void insertAll(List<IsolationRecord> records) {
-        // implemente este método
+public void insertAll(List<IsolationRecord> records, boolean enableTransactions) throws SQLException {
+
+    Connection conn = openConnection();
+    try {
+        if (enableTransactions == true) {
+            conn.setAutoCommit(false);
+        }
+
+        Map<String, Long> stateCache = new HashMap<>();
+
+        String sqlInsertIsolation = "INSERT INTO SOCIAL_ISOLATION (CITY, STATE_ID, \"INDEX\", DATE_WHEN) VALUES (?, ?, ?, ?)";
+        PreparedStatement psmtIso = conn.prepareStatement(sqlInsertIsolation);
+
+        for (IsolationRecord record : records) {
+            String sigla = record.stateAcronym();
+            Long stateId;
+            if (stateCache.containsKey(sigla)) {
+                stateId = stateCache.get(sigla);
+            } else {
+                stateId = getOrInsertState(conn, record);
+                stateCache.put(sigla, stateId);
+            }
+
+            psmtIso.setString  (1, record.city());
+            psmtIso.setLong    (2, stateId);
+            psmtIso.setDouble  (3, record.index());
+            psmtIso.setString  (4, record.date());
+            
+            psmtIso.executeUpdate();
+        }
+        psmtIso.close();
+
+        if (enableTransactions == true) {
+            conn.commit();
+        }
+
+    } catch (SQLException e) {
+        if (enableTransactions == true) {
+            conn.rollback();
+        }
+        throw e;
+    } finally {
+        conn.close();
     }
+}
     
-    public Long getOrInsertState(IsolationRecord record) throws SQLException {
-        // atualize este método para que ele verifique se um estado está cadastrado
-        // caso contrário, cadastre-o
+    private Long getOrInsertState(Connection conn, IsolationRecord record) throws SQLException {
+        String sqlGet = "SELECT ID FROM STATE WHERE NAME = ?";
+        String sqlInsert = "INSERT INTO STATE (NAME, ACRONYM) VALUES (?, ?)";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sqlGet)) {
+            pstmt.setString(1, record.state());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong("ID");
+                }
+            }
+        }
+        try (PreparedStatement pstmtInsert = conn.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS)) {
+            pstmtInsert.setString(1, record.state());
+            pstmtInsert.setString(2, record.stateAcronym());
+            pstmtInsert.executeUpdate();
+
+            try (ResultSet generatedKeys = pstmtInsert.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getLong(1);
+                }
+            }
+        }
         return 0L;
     }
     

@@ -5,6 +5,7 @@ import br.edu.unijui.pcn.logic.IsolationCSVImporter;
 import br.edu.unijui.pcn.logic.IsolationRecord;
 import br.edu.unijui.pcn.utils.XMLHandler;
 import java.io.File;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -491,12 +492,31 @@ public class MainFrame extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(this, "Please, first load the XML config", "Information", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        if (records == null || records.isEmpty()) {
+           JOptionPane.showMessageDialog(this, "No records loaded from CSV to insert.", "Warning", JOptionPane.WARNING_MESSAGE);
+        return;
+        }
         
-        // Instancie o DBManager passando os respectivos parâmetros para o seu construtor
-        DBManager db = null;
+        int portValue = Integer.parseInt(port.getText());
+        char[] passwordChars = password.getPassword();
+        String passwordValue = new String(passwordChars);
         
-        db.insertAll(records);
-
+        DBManager db = new DBManager(
+            hostName.getText(),
+            portValue,  
+            dbName.getText(),
+            username.getText(),
+            passwordValue
+        );
+        
+        boolean enableTx = enableTransactions.getText().equalsIgnoreCase("yes");
+        
+        try{
+            db.insertAll(records, enableTx);
+           JOptionPane.showMessageDialog(this, "All records inserted into database successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+        }catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Database error during execution: " + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_jbRunSystemActionPerformed
 
     /**
@@ -523,15 +543,27 @@ public class MainFrame extends javax.swing.JFrame {
             selectedFilesJList.setModel(model);
             
             records = IsolationCSVImporter.load(selectedFiles);
-
+            
             // esta variável armazenará os estados de modo que cada estado armazena uma lista de cidades cujos nomes não se repetem
             Map<String, Set<String>> data = new HashMap();
             
+            for (IsolationRecord r : records) { 
+                data.putIfAbsent(r.state(), new HashSet<>());
+                data.get(r.state()).add(r.city());
+            }
+            
+            int numeberState = data.size();
+            int numeberCity = 0;
+            for(Set<String> city : data.values()){
+                numeberCity += city.size();
+            }
+            
+            
             // as variáveis _numberOfCities e _numberStates devem receber o número total de cidades e o número total de estados
             // utilize uma estratégia para obter estes dados a partir do mapa "data" declarado logo acima
-            
-            int _numberOfCities = 0; 
-            int _numberStates = 0;
+          
+            int _numberOfCities = numeberCity; 
+            int _numberStates = numeberState;
             
             totalRegisters.setText(String.valueOf(records.size()));
             numberCities.setText(String.valueOf(_numberOfCities));
