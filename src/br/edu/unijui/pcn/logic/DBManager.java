@@ -109,8 +109,7 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
         return 0L;
     }
     
-    public IsolationRecord findTheHighest(String whereToFind) {
-       
+    public IsolationRecord findTheHighest(String whereToFind) {   
         try (Connection conn = openConnection()) {
            
             if (whereToFind.equals("Brazil")) {
@@ -211,7 +210,6 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
                     whereToFind.indexOf("(") + 1,
                     whereToFind.indexOf(")")
                 );
-
                 String sql = """
                             SELECT s.NAME,
                                 s.ACRONYM,
