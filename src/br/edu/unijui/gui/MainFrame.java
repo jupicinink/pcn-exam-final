@@ -526,6 +526,7 @@ public class MainFrame extends javax.swing.JFrame {
      * MÉTODO IMPLEMENTADO PARA VOCÊ
      * ESSE MÉTODO IMPLEMENTA A AÇÃO DO BOTÃO "SELECT..."
      */
+// ======================================ATIVIDADE 4 AQUI =================================================================================================================================================
     private void jbInputFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbInputFileButtonActionPerformed
 
         try {
@@ -579,7 +580,8 @@ public class MainFrame extends javax.swing.JFrame {
         }
 
     }//GEN-LAST:event_jbInputFileButtonActionPerformed
-// ==========================================================================================================================================================================================
+
+    // ===================================================ATIVIDADE 3 AQUI=======================================================================================================================================
     /**
      * IMPLEMENTA A AÇÃO DO BOTÃO "LOAD XML CONF"   
      */
@@ -607,7 +609,7 @@ public class MainFrame extends javax.swing.JFrame {
         enableTransactions.setText(_enableTransactions);
     }//GEN-LAST:event_jbLoadXMLActionPerformed
 
-//==============================================================================================================================================================================================
+//================================================ATIVIDADE 5 AQUI ==============================================================================================================================================
     private void jbFindIsolationIndexActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbFindIsolationIndexActionPerformed
 
         final String WHERE_TO_FIND = jcbWhereToFind.getSelectedItem().toString(); // Essa variável contém o nome e a sigla do estado selecionado
@@ -666,13 +668,7 @@ public class MainFrame extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_hostNameActionPerformed
 
-    
-    
-    
-
     public static void main(String args[]) {
-            System.out.println("CLASSPATH ATUAL: " + System.getProperty("java.class.path"));
-
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
