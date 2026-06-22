@@ -15,7 +15,10 @@ import java.util.Set;
 import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import javax.swing.SwingUtilities;
 
 /**
  * Interface implementada parcialmente pelo professor. 
@@ -604,12 +607,59 @@ public class MainFrame extends javax.swing.JFrame {
         enableTransactions.setText(_enableTransactions);
     }//GEN-LAST:event_jbLoadXMLActionPerformed
 
-
+//==============================================================================================================================================================================================
     private void jbFindIsolationIndexActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbFindIsolationIndexActionPerformed
 
         final String WHERE_TO_FIND = jcbWhereToFind.getSelectedItem().toString(); // Essa variável contém o nome e a sigla do estado selecionado
+          new Thread(() -> {
+        try {
 
-        // Siga aqui seu código
+            DBManager db = new DBManager(
+                    hostName.getText(),
+                    Integer.parseInt(port.getText()),
+                    dbName.getText(),
+                    username.getText(),
+                    new String(password.getPassword())
+            );
+
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+
+            Future<IsolationRecord> highestFuture =
+                    executor.submit(() ->
+                            db.findTheHighest(WHERE_TO_FIND));
+
+            Future<IsolationRecord> lowestFuture =
+                    executor.submit(() ->
+                            db.findTheLowest(WHERE_TO_FIND));
+
+            IsolationRecord highest = highestFuture.get();
+            IsolationRecord lowest = lowestFuture.get();
+
+            executor.shutdown();
+
+            SwingUtilities.invokeLater(() -> {
+
+                if (highest != null) {
+                    highestIsolationIndex.setText(
+                        highest.city()
+                        + " (" + highest.date() + ") -> "
+                        + String.format("%.2f", highest.index()) + "%"
+                    );
+                }
+
+                if (lowest != null) {
+                    lowestIsolationIndex.setText(
+                        lowest.city()
+                        + " (" + lowest.date() + ") -> "
+                        + String.format("%.2f", lowest.index()) + "%"
+                    );
+                }
+            });
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }).start();
     }//GEN-LAST:event_jbFindIsolationIndexActionPerformed
 
     private void hostNameActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hostNameActionPerformed
@@ -621,6 +671,8 @@ public class MainFrame extends javax.swing.JFrame {
     
 
     public static void main(String args[]) {
+            System.out.println("CLASSPATH ATUAL: " + System.getProperty("java.class.path"));
+
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.

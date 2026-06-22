@@ -26,11 +26,17 @@ public class DBManager {
         this.password = password;
     }
 
-    private Connection openConnection() throws SQLException {
-        String url = String.format("jdbc:derby://%s:%d/%s", hostName, port, dbName);
-
-        return DriverManager.getConnection(url, username, password);
+   private Connection openConnection() throws SQLException {
+    String url = String.format("jdbc:derby://%s:%d/%s", hostName, port, dbName);
+    
+    try {
+        Class.forName("org.apache.derby.client.ClientAutoloadedDriver");
+    } catch (ClassNotFoundException e) {
+        throw new SQLException("Driver Derby não encontrado no classpath", e);
     }
+    
+    return DriverManager.getConnection(url, username, password);
+}
 
 public void insertAll(List<IsolationRecord> records, boolean enableTransactions) throws SQLException {
 
@@ -43,26 +49,25 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
         Map<String, Long> stateCache = new HashMap<>();
 
         String sqlInsertIsolation = "INSERT INTO SOCIAL_ISOLATION (CITY, STATE_ID, \"INDEX\", DATE_WHEN) VALUES (?, ?, ?, ?)";
-        PreparedStatement psmtIso = conn.prepareStatement(sqlInsertIsolation);
-
-        for (IsolationRecord record : records) {
-            String sigla = record.stateAcronym();
-            Long stateId;
-            if (stateCache.containsKey(sigla)) {
-                stateId = stateCache.get(sigla);
-            } else {
-                stateId = getOrInsertState(conn, record);
-                stateCache.put(sigla, stateId);
+        try (PreparedStatement psmtIso = conn.prepareStatement(sqlInsertIsolation)) {
+            for (IsolationRecord record : records) {
+                String sigla = record.stateAcronym();
+                Long stateId;
+                if (stateCache.containsKey(sigla)) {
+                    stateId = stateCache.get(sigla);
+                } else {
+                    stateId = getOrInsertState(conn, record);
+                    stateCache.put(sigla, stateId);
+                }
+                
+                psmtIso.setString  (1, record.city());
+                psmtIso.setLong    (2, stateId);
+                psmtIso.setDouble  (3, record.index());
+                psmtIso.setString  (4, record.date());
+                
+                psmtIso.executeUpdate();
             }
-
-            psmtIso.setString  (1, record.city());
-            psmtIso.setLong    (2, stateId);
-            psmtIso.setDouble  (3, record.index());
-            psmtIso.setString  (4, record.date());
-            
-            psmtIso.executeUpdate();
         }
-        psmtIso.close();
 
         if (enableTransactions == true) {
             conn.commit();
@@ -105,10 +110,138 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
     }
     
     public IsolationRecord findTheHighest(String whereToFind) {
+       
+        try (Connection conn = openConnection()) {
+           
+            if (whereToFind.equals("Brazil")) {
+                String sql = """
+                  SELECT s.NAME,
+                         s.ACRONYM,
+                         si.CITY,
+                         si."INDEX",
+                         si.DATE_WHEN
+                  FROM SOCIAL_ISOLATION si
+                  JOIN STATE s ON s.ID = si.STATE_ID
+                  ORDER BY si."INDEX" DESC
+                  FETCH FIRST 1 ROW ONLY
+                  """;
+
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    return new IsolationRecord(
+                            rs.getString("NAME"),
+                            rs.getString("ACRONYM"),
+                            rs.getString("CITY"),
+                            rs.getDouble("INDEX"),
+                            rs.getString("DATE_WHEN")
+                    );
+                }
+            } else {
+                String acronym = whereToFind.substring( 
+                    whereToFind.indexOf("(") + 1,
+                    whereToFind.indexOf(")")
+                );
+
+                String sql = """
+                            SELECT 
+                                s.NAME,
+                                s.ACRONYM,
+                                si.CITY,
+                                si."INDEX",
+                                si.DATE_WHEN
+                            FROM SOCIAL_ISOLATION si
+                            JOIN STATE s ON s.ID = si.STATE_ID
+                            WHERE s.ACRONYM = ?
+                            ORDER BY si."INDEX" DESC
+                            FETCH FIRST 1 ROW ONLY      
+                            """;
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                stmt.setString(1, acronym);
+
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    return new IsolationRecord(
+                            rs.getString("NAME"),
+                            rs.getString("ACRONYM"),
+                            rs.getString("CITY"),
+                            rs.getDouble("INDEX"),
+                            rs.getString("DATE_WHEN")
+                    );
+                }
+            }
+        } catch (Exception e) {  
+            e.printStackTrace();
+        }
         return null;
     }
     
     public IsolationRecord findTheLowest(String whereToFind) {
+       try (Connection conn = openConnection()) {
+           
+            if (whereToFind.equals("Brazil")) {
+                String sql = """
+                  SELECT s.NAME,
+                         s.ACRONYM,
+                         si.CITY,
+                         si."INDEX" AS ISOLATION_INDEX,
+                         si.DATE_WHEN
+                  FROM SOCIAL_ISOLATION si
+                  JOIN STATE s ON s.ID = si.STATE_ID
+                  ORDER BY si."INDEX" ASC
+                  FETCH FIRST 1 ROW ONLY
+                  """;
+
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    return new IsolationRecord(
+                            rs.getString("NAME"),
+                            rs.getString("ACRONYM"),
+                            rs.getString("CITY"),
+                            rs.getDouble("ISOLATION_INDEX"),
+                            rs.getString("DATE_WHEN")
+                    );
+                }
+            } else {
+                String acronym = whereToFind.substring( 
+                    whereToFind.indexOf("(") + 1,
+                    whereToFind.indexOf(")")
+                );
+
+                String sql = """
+                            SELECT s.NAME,
+                                s.ACRONYM,
+                                si.CITY,
+                                si."INDEX" AS ISOLATION_INDEX,
+                                si.DATE_WHEN
+                            FROM SOCIAL_ISOLATION si
+                            JOIN STATE s ON s.ID = si.STATE_ID
+                            WHERE s.ACRONYM = ?
+                            ORDER BY si."INDEX" ASC
+                            FETCH FIRST 1 ROW ONLY      
+                            """;
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                stmt.setString(1, acronym);
+
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    return new IsolationRecord(
+                            rs.getString("NAME"),
+                            rs.getString("ACRONYM"),
+                            rs.getString("CITY"),
+                            rs.getDouble("ISOLATION_INDEX"),
+                            rs.getString("DATE_WHEN")
+                    );
+                }
+            }
+        } catch (Exception e) {  
+            e.printStackTrace();
+        }
         return null;
     }
 }
