@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 public class DBManager {
 
@@ -17,7 +18,9 @@ public class DBManager {
     private final String dbName;
     private final String username;
     private final String password;
-
+    
+    
+    
     public DBManager(String hostName, int port, String dbName, String username, String password) {
         this.hostName = hostName;
         this.port = port;
@@ -41,6 +44,7 @@ public class DBManager {
 public void insertAll(List<IsolationRecord> records, boolean enableTransactions) throws SQLException {
 
     Connection conn = openConnection();
+
     try {
         if (enableTransactions == true) {
             conn.setAutoCommit(false);
@@ -79,8 +83,9 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
         }
         throw e;
     } finally {
-        conn.close();
-    }
+
+    conn.close();
+}
 }
     
     private Long getOrInsertState(Connection conn, IsolationRecord record) throws SQLException {
@@ -129,6 +134,11 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
                 ResultSet rs = stmt.executeQuery();
 
                 if (rs.next()) {
+                    
+                    LogManager.getLogger().info(
+                        "Consulta do maior índice para: " + whereToFind
+                    );
+                    
                     return new IsolationRecord(
                             rs.getString("NAME"),
                             rs.getString("ACRONYM"),
@@ -162,6 +172,9 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
                 ResultSet rs = stmt.executeQuery();
 
                 if (rs.next()) {
+                    LogManager.getLogger().info(
+                        "Consulta do maior índice para: " + whereToFind
+                    );
                     return new IsolationRecord(
                             rs.getString("NAME"),
                             rs.getString("ACRONYM"),
@@ -172,7 +185,11 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
                 }
             }
         } catch (Exception e) {  
-            e.printStackTrace();
+            LogManager.getLogger().log(
+            java.util.logging.Level.WARNING,
+            "Erro ao consultar maior índice",
+            e
+        );
         }
         return null;
     }
@@ -197,6 +214,11 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
                 ResultSet rs = stmt.executeQuery();
 
                 if (rs.next()) {
+                    
+                    LogManager.getLogger().info(
+                        "Consulta do maior índice para: " + whereToFind
+                    );
+                    
                     return new IsolationRecord(
                             rs.getString("NAME"),
                             rs.getString("ACRONYM"),
@@ -228,6 +250,11 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
                 ResultSet rs = stmt.executeQuery();
 
                 if (rs.next()) {
+                    
+                    LogManager.getLogger().info(
+                        "Consulta do maior índice para: " + whereToFind
+                    );
+                    
                     return new IsolationRecord(
                             rs.getString("NAME"),
                             rs.getString("ACRONYM"),
@@ -242,4 +269,40 @@ public void insertAll(List<IsolationRecord> records, boolean enableTransactions)
         }
         return null;
     }
+        public List<IsolationRecord> getAllRecords() throws SQLException {
+
+    List<IsolationRecord> records = new java.util.ArrayList<>();
+
+    String sql = """
+        SELECT
+            s.NAME,
+            s.ACRONYM,
+            si.CITY,
+            si."INDEX",
+            si.DATE_WHEN
+        FROM SOCIAL_ISOLATION si
+        JOIN STATE s ON s.ID = si.STATE_ID
+        ORDER BY si.CITY
+        """;
+
+    try (Connection conn = openConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql);
+         ResultSet rs = stmt.executeQuery()) {
+
+        while (rs.next()) {
+
+            records.add(
+                new IsolationRecord(
+                    rs.getString("NAME"),
+                    rs.getString("ACRONYM"),
+                    rs.getString("CITY"),
+                    rs.getDouble("INDEX"),
+                    rs.getString("DATE_WHEN")
+                )
+            );
+        }
+    }
+
+    return records;
+}
 }
