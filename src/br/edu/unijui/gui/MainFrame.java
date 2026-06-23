@@ -3,6 +3,8 @@ package br.edu.unijui.gui;
 import br.edu.unijui.pcn.logic.DBManager;
 import br.edu.unijui.pcn.logic.IsolationCSVImporter;
 import br.edu.unijui.pcn.logic.IsolationRecord;
+import br.edu.unijui.pcn.logic.LogManager;
+import br.edu.unijui.pcn.logic.XMLTransformer;
 import br.edu.unijui.pcn.utils.XMLHandler;
 import java.io.File;
 import java.sql.SQLException;
@@ -30,6 +32,7 @@ public class MainFrame extends javax.swing.JFrame {
     public MainFrame() {        
         initComponents();    
         setLocationRelativeTo(this);
+        LogManager.configure("config.xml");
     }
 
     /**
@@ -479,7 +482,46 @@ public class MainFrame extends javax.swing.JFrame {
 
         final String XML_FILE_NAME = xmlOutputFileName.getText(); // Essa variável contém o nome do arquivo ao qual deve ser exportado o XML
 
-        // Siga aqui seu código
+        if (XML_FILE_NAME == null || XML_FILE_NAME.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Informe o nome do arquivo XML.",
+                    "Aviso",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+        try {
+
+        DBManager dbManager =
+                new DBManager(
+                        hostName.getText(),
+                        Integer.parseInt(port.getText()),
+                        dbName.getText(),
+                        username.getText(),
+                        String.valueOf(password.getPassword())
+                );
+
+        XMLTransformer transformer =
+                new XMLTransformer(dbManager);
+
+        transformer.export(XML_FILE_NAME);
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Arquivo XML exportado com sucesso!"
+        );
+
+    } catch (Exception e) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                e.getMessage(),
+                "Erro",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
+
 
     }//GEN-LAST:event_jbExportActionPerformed
 
