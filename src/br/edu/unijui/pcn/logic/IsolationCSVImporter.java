@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,7 +17,10 @@ public class IsolationCSVImporter {
     public static List<IsolationRecord> load(File[] files) throws InterruptedException {
         List<IsolationRecord> records = Collections.synchronizedList(new ArrayList<>());       
         
-        ExecutorService executor =  Executors.newFixedThreadPool(files.length);
+        ExecutorService executor =  Executors.newFixedThreadPool(
+                Runtime.getRuntime()
+                       .availableProcessors()
+        );
       
         for(File file : files){
            
@@ -43,18 +47,30 @@ public class IsolationCSVImporter {
                             records.add(new IsolationRecord(state, acronym, city, index, date));
                                     
                         } catch (NumberFormatException nfe) {
-                                System.err.println("Erro de conversão na linha: " + linha + " -> " + nfe.getMessage());
+                                LogManager.getLogger().log(
+                                Level.WARNING,
+                                "Erro de conversão na linha: " + linha,
+                                nfe
+                            );
                         }
                     }
                 }
                 } catch (IOException | NumberFormatException e) {
-                    System.err.println("Erro ao ler o arquivo " + file.getName() + ": " + e.getMessage());
+                    LogManager.getLogger().log(
+                    Level.WARNING,
+                    "Erro ao ler o arquivo: " + file.getName(),
+                    e
+                );
                 }
             });
         }    
         executor.shutdown();
         executor.awaitTermination(60, TimeUnit.SECONDS);
         
+        LogManager.getLogger().info(() -> "Importação concluída. Total de registros: "
+                + records.size());
+        
         return records;
     }
+    
 }
